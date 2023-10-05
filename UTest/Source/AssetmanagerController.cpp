@@ -1,222 +1,232 @@
-#include <vector>
-#include <iostream>
+#include <set>
 #include <string>
-#include <bit7z/bit7z.hpp>
-#include <bit7z/bitarchivewriter.hpp>
 #include <filesystem>
+#include <optional>
 #include "AssetmanagerController.h"
 
-Controller::AssetmanagerController::~AssetmanagerController()
+using namespace Controller;
+
+void AssetmanagerController::PrintStartMessage()
 {
+    m_pUI->ClearScreen();
+    m_pUI->PrintOnScreen("Please select an option:", true);
+    m_pUI->PrintOnScreen("1. CompressFiles", true);
+    m_pUI->PrintOnScreen("2. UncompressFiles", true);
+    m_pUI->PrintOnScreen("3. AddOrRemoveAsset", true);
+    m_pUI->PrintOnScreen("4. ListAllAssets", true);
+    m_pUI->PrintOnScreen("5. PrintMetadata", true);
+    m_pUI->PrintOnScreen("6. Quit", true);
 }
 
-void Controller::AssetmanagerController::PrintStartMessage()
+void AssetmanagerController::PrintFinalMessage() 
 {
-	//clear screen and show options
-	m_pUI->ClearScreen();
-
-	m_pUI->PrintOnScreen(("Please select an option:"), true);
-	m_pUI->PrintOnScreen(("1. Compress file"), true);
-	m_pUI->PrintOnScreen(("2. Send Message"), true);
-	m_pUI->PrintOnScreen(("3. Receive All Messages For User"), true);
-	m_pUI->PrintOnScreen(("4. Quit"), true);
+    m_pUI->PrintOnScreen("Press ENTER to continue.....", true);
+    m_pUI->WaitForUserInput();
 }
 
-void Controller::AssetmanagerController::PrintFinalMessage()
+bool AssetmanagerController::StartApplication()
 {
-	m_pUI->PrintOnScreen((" "), true);
-	m_pUI->PrintOnScreen(("Enter any key and press return to continue....."), true);
-	m_pUI->WaitForUserInput();
+    bool quit = false;
+    PrintStartMessage();
+    int UserInput;
+    m_pUI->GetInputInteger(UserInput);
+
+    //switch (static_cast<UserInputType>(UserInput))
+    switch (UserInput)
+    {
+    case UserInputType::CompressFiles:
+        Compress();
+        break;
+    case UserInputType::UncompressFiles:
+        Uncompress();
+        break;
+    case UserInputType::AddorRemoveAsset:
+        // Implement SendMessage and ReadMessage methods here
+        break;
+    case UserInputType::ListAllAssets:
+        // Implement SendMessage and ReadMessage methods here
+        break;
+    case UserInputType::PrintMetadata:
+        // Implement SendMessage and ReadMessage methods here
+        break;
+    case UserInputType::QuitApplication:
+        QuitApplication();
+        quit = true;
+        break;
+
+    default:
+        m_pUI->PrintOnScreen("Invalid Option Selected", true);
+        break;
+    }
+
+    PrintFinalMessage();
+    return quit;
 }
 
-bool Controller::AssetmanagerController::StartApplication()
+void AssetmanagerController::QuitApplication() {
+    m_pUI->PrintOnScreen("Quitting!", true);
+}
+
+bool AssetmanagerController::IsSupportedExtension(const std::string& filePath)
 {
-	//Take input from user and proceed accordingly 
-	bool quit = false;
-	PrintStartMessage();
-	int UserInput;
-	m_pUI->GetInputInteger(UserInput);
-
-	switch (UserInput)
-	{
-	case UserInputType::CreateUser:
-		Compress();
-		break;
-
-	case UserInputType::SendMessage:
-		//SendMessage();
-		break;
-
-	case UserInputType::ReadMessage:
-		//ReadMessage();
-		break;
-
-	case UserInputType::QuitApplication:
-		QuitApplication(quit);
-		break;
-
-	default:
-		m_pUI->PrintOnScreen(("Invalid Option Selected"), false);
-		break;
-	}
-
-	PrintFinalMessage();
-	return quit;
+    static std::set<std::string> supportedExtensions = { ".tga", ".wav", ".json", ".7z" };
+    std::string fileExtension = std::filesystem::path(filePath).extension().string();
+    return supportedExtensions.count(fileExtension) > 0;
 }
 
-void Controller::AssetmanagerController::QuitApplication(bool& ret)
+bool AssetmanagerController::GetValidPath(std::string& filepath)
 {
-	m_pUI->PrintOnScreen(("Quitting!"), true);
-	ret = true;
+    m_pUI->PrintOnScreen("Please enter full path of the file", true);
+    m_pUI->GetInputString(filepath);
+
+    if (std::filesystem::is_regular_file(filepath) && IsSupportedExtension(filepath))
+    {
+        if (std::filesystem::exists(filepath))
+        {
+            std::replace(filepath.begin(), filepath.end(), '\\', '/');
+            return true;
+        }
+        else 
+        {
+            m_pUI->PrintOnScreen("The provided path does not exist.Please entre file path again", true);
+        }
+    }
+    else 
+    {
+        m_pUI->PrintOnScreen("Invalid file or unsupported extension. Please entre file path again", true);
+    }
+
+    filepath.clear();
+    return false;
 }
 
-#if 0
-void Controller::AssetmanagerController::Compress()
+void AssetmanagerController::GetUserInput(std::string& directoryPath, std::set<std::string>& files) 
 {
-	OPENFILENAMEW ofn;
-	wchar_t szFileNames[MAX_PATH * 100] = L""; // Increased buffer size to hold multiple file names
+    std::string path;
+    if (GetValidPath(path)) {
+        auto result = files.insert(path);
+        if (!result.second) {
+            m_pUI->PrintOnScreen("File already exists, please check the path and enter a new one", true);
+        }
+    }
 
-	ZeroMemory(&ofn, sizeof(OPENFILENAMEW));
-	ofn.lStructSize = sizeof(OPENFILENAMEW);
-	ofn.hwndOwner = NULL;
-	ofn.lpstrFilter = L"All Supported Files (*.tga;*.ogg;*.wav;*.json)\0*.tga;*.ogg;*.wav;*.json\0"
-		L"TGA Files (*.tga)\0*.tga\0"
-		L"Audio Files (*.ogg, *.wav)\0*.ogg;*.wav\0"
-		L"JSON Files (*.json)\0*.json\0";
-	ofn.lpstrFile = szFileNames;
-	ofn.nMaxFile = MAX_PATH * 100; // Increased buffer size to hold multiple file names
-	ofn.Flags = OFN_EXPLORER | OFN_ALLOWMULTISELECT | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+    do 
+    {
+        m_pUI->PrintOnScreen("Do you want to enter more files? Enter Y for Yes or N for No", true);
+        m_pUI->GetInputString(path);
 
-	if (GetOpenFileNameW(&ofn))
-	{
-		// Extract and display multiple file paths
-		wchar_t* pFile = szFileNames;
-
-		m_pModel->compressFile(pFile);
-	}
+        while ((path != "Y") && (path != "N"))
+        {
+            m_pUI->PrintOnScreen("Invalid input. Please Enter Y to add more files or N to compress current selection", true);
+            m_pUI->GetInputString(path);
+        }
+        if (path == "N") {
+            break;
+        }
+        else {
+           
+            if (GetValidPath(path)) {
+                auto result = files.insert(path);
+                if (!result.second) {
+                    m_pUI->PrintOnScreen("File already exists, please check the path and enter a new one", true);
+                }
+            }
+        }
+    } while (true);
 
 }
-#endif // 0
 
-bool Controller::AssetmanagerController::isSupportedExtension(const std::string& filePath) {
-	std::set<std::string> supportedExtensions = { ".tga", ".wav", ".json" };
-	std::string fileExtension = std::filesystem::path(filePath).extension().string();
-	return supportedExtensions.count(fileExtension) > 0;
-}
-
-void Controller::AssetmanagerController::GetValidPath(std::string& filepath)// rewrite this in proper way
+bool AssetmanagerController::HasSpecialCharacters(const std::string& str)
 {
-	m_pUI->PrintOnScreen(("Please enter full path of the file to compress"), true);
-	//std::string filepath;
-	 std::cin >> filepath;
-	 // Check if the path exists
-	 if (std::filesystem::exists(filepath)) {
-		 if (std::filesystem::is_regular_file(filepath)) {
-			 if (isSupportedExtension(filepath)) {
-				 //later also check if the path size, name size, special character
-				 std::cout << "File exists at the provided path with a supported extension." << std::endl;
-				 std::replace(filepath.begin(), filepath.end(), '\\', '/');
-			 }
-			 else {
-				 std::cout << "File exists at the provided path, but it has an unsupported extension." << std::endl;
-				 filepath.clear();
-			 }
-		 }
-		 else {
-			 std::cout << "A non-file item (e.g., directory) exists at the provided path." << std::endl;
-			 filepath.clear();
-		 }
-	 }
-	 else {
-		 std::cout << "The provided path does not exist." << std::endl;
-		 filepath.clear();
-	 }
+    return std::any_of(str.begin(), str.end(), [](char c) {
+        return !std::isalnum(c) && c != '_';
+        });
 }
 
-void Controller::AssetmanagerController::TakeInputPaths(std::string& directoryPath, std::set<std::string>& files)
+void AssetmanagerController::Compress() 
 {
-	std::string path;
-	GetValidPath(path);
-	if(!path.empty())// remeber to check if the files are in same folder
-	{
-		//files.push_back(path);
-		auto result_1 = files.insert(path);
-		if (!result_1.second)
-			m_pUI->PrintOnScreen(("File already exist, please check the path and enter new path"), true);
-	}
-	do
-	{
-		int p;
-		m_pUI->PrintOnScreen(("Do you want to enter more files. Enter 1 for Yes or 2 for No"), true);
-		m_pUI->GetInputInteger(p);
-		if (p == 2)
-		{
-			break;
-		}
-		else
-		{
-			m_pUI->PrintOnScreen(("Please enter full path of the file to compress"), true);
-			//m_pUI->GetInputString(filepath);
-			GetValidPath(path);
-			if (!path.empty())// remeber to check if the files are in same folder
-			{
-				//files.push_back(path);
-				auto result_1 = files.insert(path);
-				if (!result_1.second)
-					m_pUI->PrintOnScreen(("File already exist, please check the path and enter new path"), true);
-			}
-		}
+    std::set<std::string> files;
+    std::string directoryPath;
+    GetUserInput(directoryPath, files);
+    if (files.size() < 1)
+    {
+        m_pUI->PrintOnScreen("No files are selected for operation.", true);
+        return;
+    }
 
-	} while (true);
+    directoryPath = std::filesystem::path(*(files.rbegin())).parent_path().string();
 
+    std::string outputfilename;
+    m_pUI->PrintOnScreen("Please enter the name of the output compressed file", true);
+
+    do {
+        m_pUI->GetInputString(outputfilename);
+        if (HasSpecialCharacters(outputfilename)) {
+            m_pUI->PrintOnScreen("File name contains special characters. Please enter a name without special characters", true);
+            continue;
+        }
+
+        outputfilename = directoryPath + "/" + outputfilename + ".7z";
+
+        if (std::filesystem::exists(outputfilename)) {
+            m_pUI->PrintOnScreen("The file already exists at the specified path. Please enter a different name", true);
+        }
+        else {
+            break;
+        }
+    } while (true);
+
+    std::optional<std::string> error = m_pModel->compressFile(files, outputfilename);
+    if (error.has_value())
+    {
+        m_pUI->PrintOnScreen(error.value(), true);
+        return;
+    }
+    m_pUI->PrintOnScreen("Files has been successfuly compressed. Please check the following directory path: " + directoryPath, true);
 }
 
-bool Controller::AssetmanagerController::fileExistsInDirectory(const std::string& directoryPath)
+void Controller::AssetmanagerController::Uncompress()
 {
-	for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
-		if (std::filesystem::is_regular_file(entry.path()) && isSupportedExtension(entry.path().string())) {
-			return true; // Found a file with a supported extension
-		}
-	}
-	return false; // No supported file found in the directory
+    std::string zipfile;
+    std::string outputdir;
+
+    if (GetValidPath(zipfile))
+    {
+       NEWFOLDER:
+        m_pUI->PrintOnScreen("Please enter the path of folder where you want to uncompress", true);
+        m_pUI->GetInputString(outputdir);
+        while (!std::filesystem::is_directory(outputdir))
+        {
+            m_pUI->PrintOnScreen("Folder path is not valid. Please enter the valid folder path", true);
+            m_pUI->GetInputString(outputdir);
+        }
+        if (!std::filesystem::is_empty(outputdir))
+        {
+            std::string wantToP;
+            m_pUI->PrintOnScreen("Folder is not empty. Your files may be over ridden Do you want to proceed Y/N", true);
+            m_pUI->GetInputString(wantToP);
+            while ((wantToP != "Y") && (wantToP != "N"))
+            {
+                m_pUI->PrintOnScreen("Invalid input. Please Enter Y to proceed or N to enter new path", true);
+                m_pUI->GetInputString(wantToP);
+            }
+            if ((wantToP == "N"))
+            {
+                goto NEWFOLDER;
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        std::optional<std::string> error = m_pModel->UncompressFile(zipfile, outputdir);
+        if (error.has_value())
+        {
+            m_pUI->PrintOnScreen(error.value(), true);
+            return;
+        }
+        m_pUI->PrintOnScreen("Files has been successfuly Uncompressed. Please check the following directory path: " + outputdir, true);
+
+    }
 }
-
-bool Controller::AssetmanagerController::HasSpecialCharacters(const char* str)
-{
-	return str[strspn(str, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_")] != 0;
-}
-
-void Controller::AssetmanagerController::Compress()
-{
-	bit7z::Bit7zLibrary lib("7z.dll");
-	bit7z::BitArchiveWriter Writearchive(lib, bit7z::BitFormat::SevenZip);
-
-	std::set<std::string> files;
-	std::string directoryPath;
-	TakeInputPaths(directoryPath, files);
-	directoryPath = std::filesystem::path(*(files.rbegin())).parent_path().string();
-	std::cout << "Output Directory path: " << directoryPath << std::endl;
-
-	m_pUI->PrintOnScreen(("Please enter the name of output compress file"), true);
-	std::string outputfilename;
-	std::cin >> outputfilename; 
-	while(HasSpecialCharacters(outputfilename.c_str()))
-	{
-		m_pUI->PrintOnScreen(("File name contain special character, please enter name without special character"), true);
-		std::cin >> outputfilename;
-	}
-
-	outputfilename = directoryPath + "/" + outputfilename + ".7z";// check if the file already exist then tell user different 
-
-	while (std::filesystem::exists(outputfilename))
-	{
-		m_pUI->PrintOnScreen(("The file exists at the specified path:"), false);
-		std::cin >> outputfilename;
-		outputfilename = directoryPath + "/" + outputfilename + ".7z";// check if the file already exist then tell user different 
-	}
-
-	m_pModel->compressFile(files, outputfilename);
-}
-
-
-

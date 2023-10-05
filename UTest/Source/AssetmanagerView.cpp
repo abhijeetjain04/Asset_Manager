@@ -23,10 +23,13 @@ void View::AssetmanagerView::ClearScreen()
 
 void View::AssetmanagerView::GetInputString(std::string& str)
 {
-	std::cin >> str;
+	//std::cin >> str;
+	std::getline(std::cin >> std::ws, str);
 }
 
 void View::AssetmanagerView::GetInputInteger(int& inputInt)
 {
+	//std::cin.clear();
+	//std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 	std::cin >> inputInt;
 }

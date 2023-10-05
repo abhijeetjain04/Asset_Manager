@@ -1,10 +1,10 @@
 #include "AssetmanagerModel.h"
 
 #include <bit7z/bitarchivewriter.hpp>
+#include <bit7z/Bit7zLibrary.hpp>
 
 Model::AssetmanagerModel::AssetmanagerModel()
 {
-
 }
 
 Model::AssetmanagerModel::~AssetmanagerModel()
@@ -40,10 +40,9 @@ void Model::AssetmanagerModel::compressFile(wchar_t* pFile)
 #endif // 0
 
 
-void Model::AssetmanagerModel::compressFile(std::set<std::string>& files, const std::string& output)
+std::optional<std::string> Model::AssetmanagerModel::compressFile(std::set<std::string>& files, const std::string& output)
 {
-	bit7z::Bit7zLibrary lib("7z.dll");
-	bit7z::BitArchiveWriter Writearchive(lib, bit7z::BitFormat::SevenZip);
+	bit7z::BitArchiveWriter Writearchive(m_lib, bit7z::BitFormat::SevenZip);
 
 	try {
 		for (auto& file : files)
@@ -53,11 +52,24 @@ void Model::AssetmanagerModel::compressFile(std::set<std::string>& files, const 
 		Writearchive.compressTo(output);
 	}
 	catch (const bit7z::BitException& ex)
-	{ /* Do something with ex.what()...*/
-		auto x1 = ex.code();
-		auto x2 = ex.failedFiles();
-		auto x3 = ex.what();
-		//std::cout << x3 << std::endl;
+	{
+		return ex.what();
 	}
 
+}
+
+std::optional<std::string> Model::AssetmanagerModel::UncompressFile(const std::string& zipfile, const std::string& outputdir)
+{
+	bit7z::BitArchiveReader Readarchive{ m_lib, zipfile, bit7z::BitFormat::SevenZip };
+	try {
+	// Testing the archive
+	Readarchive.test();
+	}
+	catch (const bit7z::BitException& ex)
+	{
+		return ex.what();
+	}
+	// Extracting the archive
+	Readarchive.extractTo(outputdir);
+	return {};
 }
