@@ -22,16 +22,27 @@ void AddFileToArchive(bit7z::BitArchiveEditor& editorearchive)
 {
     //editorearchive.setUpdateMode(bit7z::UpdateMode::Append);
     editorearchive.addFile("C:/Users/acer/OneDrive/Documents/VS19_project/UTest/UTest/TestObjects/TestJESON.json");
-    editorearchive.compressTo("C:/Users/acer/OneDrive/Documents/VS19_project/UTest/UTest/Compressed/output1.7z");
+    editorearchive.applyChanges();
+    //editorearchive.updateItem()
+    //editorearchive.compressTo("C:/Users/acer/OneDrive/Documents/VS19_project/UTest/UTest/Compressed/output1.7z");
 }
 
 void RemoveFileFromArchive(bit7z::BitArchiveEditor& editorearchive)
 {
     bit7z::tstring name = "TestJESON.json";
-    //editorearchive.setUpdateMode(bit7z::UpdateMode::Append);
+
     editorearchive.deleteItem(name);
-    //editorearchive.deleteItem(0);
-    editorearchive.compressTo("C:/Users/acer/OneDrive/Documents/VS19_project/UTest/UTest/Compressed/output2.7z");
+
+    try {
+        editorearchive.applyChanges();
+    }
+    catch (const bit7z::BitException& ex)
+    { /* Do something with ex.what()...*/
+        auto x1 = ex.code();
+        auto x2 = ex.failedFiles();
+        auto x3 = ex.what();
+        std::cout << x3 << std::endl;
+    }
 }
 
 void UncompressFiles(const bit7z::BitArchiveReader& Readarchive)
@@ -81,7 +92,7 @@ void updateLoop()
          archive.compressTo("output.7z");
          */
     try {
-        CompressToArchive(Writearchive);
+        //CompressToArchive(Writearchive);
     }
     catch (const bit7z::BitException& ex)
     { /* Do something with ex.what()...*/
@@ -96,7 +107,7 @@ void updateLoop()
     bit7z::BitArchiveEditor editorearchive(lib, inFile, bit7z::BitFormat::SevenZip);
 
     try {
-        AddFileToArchive(editorearchive);
+       //AddFileToArchive(editorearchive);
     }
     catch (const bit7z::BitException& ex)
     { /* Do something with ex.what()...*/
@@ -108,8 +119,7 @@ void updateLoop()
 
     /*-------------------------------------------------------------------------------*/
     //bit7z::BitArchiveReader Readarchive{ lib, "path/to/archive.gz", bit7z::BitFormat::GZip };
-    bit7z::BitArchiveReader Readarchive{ lib,
-        "C:/Users/acer/OneDrive/Documents/VS19_project/UTest/UTest/Compressed/output1.7z", bit7z::BitFormat::SevenZip };
+   // bit7z::BitArchiveReader Readarchive{ lib,"C:/Users/acer/OneDrive/Documents/VS19_project/UTest/UTest/Compressed/output1.7z", bit7z::BitFormat::SevenZip };
 
     /*
           // Testing the archive
@@ -118,7 +128,7 @@ void updateLoop()
          Readarchive.extractTo("C:/Users/acer/OneDrive/Documents/VS19_project/UTest/UTest/UnCompressed");
          */
     try {
-        UncompressFiles(Readarchive);
+        //UncompressFiles(Readarchive);
     }
     catch (const bit7z::BitException& ex)
     { /* Do something with ex.what()...*/
@@ -129,7 +139,7 @@ void updateLoop()
     }
 
     /*-------------------------------------------------------------------------------*/
-    bit7z::tstring File = "C:/Users/acer/OneDrive/Documents/VS19_project/UTest/UTest/Compressed/output1.7z";
+    bit7z::tstring File = "C:/Users/acer/OneDrive/Documents/VS19_project/UTest/UTest/Compressed/output.7z";
     bit7z::BitArchiveEditor Reditorearchive(lib, File, bit7z::BitFormat::SevenZip);
     try {
         RemoveFileFromArchive(Reditorearchive);
@@ -143,7 +153,7 @@ void updateLoop()
     }
 
     /*-------------------------------------------------------------------------------*/
-    PrintArchiveMetadata(Readarchive);
+   // PrintArchiveMetadata(Readarchive);
     /*-------------------------------------------------------------------------------*/
 
 }
@@ -151,6 +161,10 @@ void updateLoop()
 int main() 
 {
    //updateLoop();
+
+    //WIKI - https://rikyoz.dev/bit7z/
+
+    //STATIC LIB - https://github.com/rikyoz/bit7z/releases/tag/v4.0.1
 
     View::AssetmanagerView ui;
     Model::AssetmanagerModel model;

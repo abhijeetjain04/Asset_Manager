@@ -1,13 +1,12 @@
 #pragma once
 
-
 #include "AssetmanagerView.h"
 #include "AssetmanagerModel.h"
 
 namespace Controller {
 
     enum UserInputType {
-        CompressFiles = 1, UncompressFiles, AddorRemoveAsset, ListAllAssets, PrintMetadata, QuitApplication
+        CompressFiles = 1, UncompressFiles, AddAsset, RemoveAsset, ListAllAssetsWithMetadata, QuitApplication
     };
 
     class AssetmanagerController {
@@ -24,11 +23,14 @@ namespace Controller {
         void PrintStartMessage();
         void PrintFinalMessage();
         bool IsSupportedExtension(const std::string& filePath);
-        bool GetValidPath(std::string& filepath);
-        void GetUserInput(std::string& directoryPath, std::set<std::string>& files);
+        bool GetValidPath(const std::string& firstMessage, std::string& filepath);
+        void GetUserInput(const std::string& directoryPath, std::set<std::string>& files);
         bool HasSpecialCharacters(const std::string& str);
         void Compress();
         void Uncompress();
+        void AddAsset();
+        void RemoveAsset();
+        void ListAllAssetsWithMetadata();
 
         View::AssetmanagerView* m_pUI;
         Model::AssetmanagerModel* m_pModel;
