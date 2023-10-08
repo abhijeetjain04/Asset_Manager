@@ -116,16 +116,16 @@ bool AssetmanagerController::HasSpecialCharacters(const std::string& str)
 
 void AssetmanagerController::Compress() 
 {
-    std::set<std::string> files;
-    std::string directoryPath;
-    GetInputToCompress(directoryPath, files);
-    if (files.empty())
+    std::set<std::string> inputfiles;
+    GetInputToCompress( inputfiles);
+    if (inputfiles.empty())
     {
         m_pUI->PrintOnScreen("No files are selected for operation.");
         return;
     }
 
-    directoryPath = std::filesystem::path(*(files.rbegin())).parent_path().string();
+    std::string directoryPath;
+    m_pFileOper->GetDirectoryPath(*(inputfiles.rbegin()), directoryPath);
 
     std::string outputfilename;
     m_pUI->PrintOnScreen("Please enter the name of the output compressed file");
@@ -147,7 +147,7 @@ void AssetmanagerController::Compress()
         }
     } while (true);
 
-    std::optional<std::string> error = m_pModel->compressFile(files, outputfilename);
+    std::optional<std::string> error = m_pModel->compressFile(inputfiles, outputfilename);
     if (error.has_value())
     {
         m_pUI->PrintOnScreen(error.value(), true);
@@ -178,7 +178,7 @@ void Controller::AssetmanagerController::AddAsset()
 {
     std::set<std::string> filesToAdd;
     std::string directoryPath, zipFile;
-    GetInputToCompress(directoryPath, filesToAdd);
+    GetInputToCompress(filesToAdd);
     if (filesToAdd.empty())
     {
         m_pUI->PrintOnScreen("No files are selected for operation.");
@@ -271,7 +271,7 @@ void Controller::AssetmanagerController::ListAllAssetsWithMetadata()
     m_pUI->PrintOnScreen("Archived items with metadata");
 }
 
-void AssetmanagerController::GetInputToCompress(const std::string& directoryPath, std::set<std::string>& files)
+void AssetmanagerController::GetInputToCompress( std::set<std::string>& files)
 {
     std::string path, errorMessage;
     do
@@ -440,6 +440,9 @@ void Controller::FileOperations::GetCompleteFilename(const std::string& filepath
     completeFilename = std::filesystem::path(filepath).filename().string();
 }
 
-
+void Controller::FileOperations::GetDirectoryPath(const std::string& filepath, std::string& directoryPath)
+{
+    directoryPath = std::filesystem::path(filepath).parent_path().string();
+}
 
 

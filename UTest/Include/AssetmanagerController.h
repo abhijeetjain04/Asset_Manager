@@ -20,6 +20,7 @@ namespace Controller
         bool HasSpecialCharacters(const std::string& str);
         bool IsFileExist(std::string& filepath);
         void GetCompleteFilename(const std::string& filepath, std::string& completeFilename);
+        void GetDirectoryPath(const std::string& filepath, std::string& directoryPath);
     private:
     };
 
@@ -40,7 +41,7 @@ namespace Controller
     private:
         void PrintStartMessage();
         void PrintFinalMessage();
-        void GetInputToCompress(const std::string& directoryPath, std::set<std::string>& files);
+        void GetInputToCompress(std::set<std::string>& files);
         void GetInputToUncompress(std::string& zipFile, std::string& directoryPath);
         void GetValidArchivePath(std::string& zipFile);
         void Compress();
