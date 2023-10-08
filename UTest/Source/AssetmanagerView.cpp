@@ -8,6 +8,11 @@ void View::AssetmanagerView::PrintOnScreen(const std::string& str, bool WantNewL
 		std::cout << str;
 }
 
+void View::AssetmanagerView::PrintOnScreen(std::string_view str)
+{
+	std::cout << str << std::endl;
+}
+
 void View::AssetmanagerView::WaitForUserInput()
 {
 	std::string temp;
