@@ -13,7 +13,7 @@
 
 /*
 * 
-std::optional<std::string> Model::AssetmanagerModel::compressFile(const std::set<std::string>& files, const std::string& output)
+std::optional<std::string> Model::AssetmanagerModel::compressFile(const std::set<std::string>& files, const std::string& outputDirectory)
 {
 	try {
 		bit7z::BitArchiveWriter Writearchive(m_lib, bit7z::BitFormat::SevenZip);
@@ -21,7 +21,7 @@ std::optional<std::string> Model::AssetmanagerModel::compressFile(const std::set
 		{
 			Writearchive.addFile(file);
 		}
-		Writearchive.compressTo(output);
+		Writearchive.compressTo(outputDirectory);
 	}
 	catch (const bit7z::BitException& ex)
 	{
@@ -33,7 +33,7 @@ std::optional<std::string> Model::AssetmanagerModel::compressFile(const std::set
 */
 
 
-std::optional<std::string> Model::AssetmanagerModel::compressFile(const std::set<std::string>& files, std::string_view output)
+std::optional<std::string> Model::AssetmanagerModel::compressFile(const std::set<std::string>& files, std::string_view outputDirectory)
 {
 	try {
 		bit7z::BitArchiveWriter Writearchive(m_lib, bit7z::BitFormat::SevenZip);
@@ -41,7 +41,7 @@ std::optional<std::string> Model::AssetmanagerModel::compressFile(const std::set
 		{
 			Writearchive.addFile(file);
 		}
-		Writearchive.compressTo(output.data());
+		Writearchive.compressTo(outputDirectory.data());
 	}
 	catch (const bit7z::BitException& ex)
 	{
@@ -50,13 +50,13 @@ std::optional<std::string> Model::AssetmanagerModel::compressFile(const std::set
 	return {};
 }
 
-std::optional<std::string> Model::AssetmanagerModel::UncompressFile(const std::string& zipfile, const std::string& outputdir)
+std::optional<std::string> Model::AssetmanagerModel::UncompressFile(const std::string_view zipFile, const std::string_view outputDirectory)
 {
 	try {
-	bit7z::BitArchiveReader Readarchive{ m_lib, zipfile, bit7z::BitFormat::SevenZip };
+	bit7z::BitArchiveReader Readarchive{ m_lib, zipFile.data(), bit7z::BitFormat::SevenZip };
 	// Testing the archive
 	Readarchive.test();
-	Readarchive.extractTo(outputdir);
+	Readarchive.extractTo(outputDirectory.data());
 	}
 	catch (const bit7z::BitException& ex)
 	{
@@ -66,15 +66,15 @@ std::optional<std::string> Model::AssetmanagerModel::UncompressFile(const std::s
 	return {};
 }
 
-std::optional<std::string> Model::AssetmanagerModel::AddFileToArchive(const std::string& zipfile, std::set<std::string>& filesToAdd)
+std::optional<std::string> Model::AssetmanagerModel::AddFileToArchive(const std::string& zipFile, std::set<std::string>& filesToAdd)
 {
 	try {
-		bit7z::BitArchiveEditor editorearchive(m_lib, zipfile, bit7z::BitFormat::SevenZip);
+		bit7z::BitArchiveEditor editorearchive(m_lib, zipFile, bit7z::BitFormat::SevenZip);
 		for (auto& file : filesToAdd)
 		{
 			editorearchive.addFile(file);
 		}
-		//editorearchive.compressTo(outputdir);
+		//editorearchive.compressTo(outputDirectory);
 		editorearchive.applyChanges();
 	}
 	catch (const bit7z::BitException& ex)
@@ -84,11 +84,11 @@ std::optional<std::string> Model::AssetmanagerModel::AddFileToArchive(const std:
 	return {};
 }
 
-std::optional<std::string> Model::AssetmanagerModel::RemoveFileFromArchive(const std::string& zipfile, const std::string& fileToDelete)
+std::optional<std::string> Model::AssetmanagerModel::RemoveFileFromArchive(const std::string& zipFile, const std::string& fileToDelete)
 {
 	try
 	{
-		bit7z::BitArchiveEditor editorearchive(m_lib, zipfile, bit7z::BitFormat::SevenZip);
+		bit7z::BitArchiveEditor editorearchive(m_lib, zipFile, bit7z::BitFormat::SevenZip);
 		editorearchive.deleteItem(fileToDelete);
 		editorearchive.applyChanges();
 	}
@@ -100,18 +100,18 @@ std::optional<std::string> Model::AssetmanagerModel::RemoveFileFromArchive(const
 	return {};
 }
 
-std::optional<std::string> Model::AssetmanagerModel::ArchiveDetailsWithMetadata(const std::string& zipfile, std::vector<std::unordered_map<std::string, std::string>>& arc_items)
+std::optional<std::string> Model::AssetmanagerModel::ArchiveDetailsWithMetadata(const std::string& zipFile, std::vector<std::unordered_map<std::string, std::string>>& archiveItems)
 {
 	try
 	{
-		bit7z::BitArchiveReader Readarchive{ m_lib,zipfile, bit7z::BitFormat::SevenZip };
+		bit7z::BitArchiveReader Readarchive{ m_lib,zipFile, bit7z::BitFormat::SevenZip };
 		std::unordered_map<std::string, std::string> properties;
 		properties["ItemsCount"] = std::to_string(Readarchive.itemsCount());
 		properties["FoldersCount"] = std::to_string(Readarchive.foldersCount());
 		properties["FilesCount"] = std::to_string(Readarchive.filesCount());
 		properties["Size"] = std::to_string(Readarchive.size());
 		properties["PackedSize"] = std::to_string(Readarchive.packSize());
-		arc_items.emplace_back(properties);
+		archiveItems.emplace_back(properties);
 
 		std::unordered_map<std::string, std::string> eachItem;
 		for (auto& item : Readarchive.items()) {
@@ -123,7 +123,7 @@ std::optional<std::string> Model::AssetmanagerModel::ArchiveDetailsWithMetadata(
 			eachItem["Size"]= std::to_string(item.size());
 			eachItem["PackedSize"] = std::to_string(item.packSize());
 			eachItem["CRC"]= std::to_string(item.crc());
-			arc_items.emplace_back(eachItem);
+			archiveItems.emplace_back(eachItem);
 			eachItem.clear();
 		}
 	}
@@ -135,12 +135,12 @@ std::optional<std::string> Model::AssetmanagerModel::ArchiveDetailsWithMetadata(
 	return {};
 }
 
-std::pair<std::string, bool> Model::AssetmanagerModel::ArchiveContainsFile(const std::string& zipfile, std::string& Files)
+std::pair<std::string, bool> Model::AssetmanagerModel::ArchiveContainsFile(const std::string& zipFile, std::string& Files)
 {
 	bool fileAlreadyExist = false;
 	try
 	{
-		bit7z::BitArchiveReader Readarchive{ m_lib,zipfile, bit7z::BitFormat::SevenZip };
+		bit7z::BitArchiveReader Readarchive{ m_lib, zipFile, bit7z::BitFormat::SevenZip };
 		fileAlreadyExist = Readarchive.contains(Files);
 	}
 	catch (const bit7z::BitException& ex)
