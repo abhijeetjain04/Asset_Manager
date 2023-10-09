@@ -1,6 +1,9 @@
 **INTRODUCTION**
+
 This asset management tool offers comprehensive capabilities for the efficient handling and storage of assets. It currently provides support for a variety of file formats, including '.tga,' '.wav,' and '.json,' and facilitates their storage within '.7z' compressed files. Key functionalities of this asset manager include the ability to: “Compress Selected Files, Uncompress Compressed Files, Add Files to Compressed Files, Remove Files from Compressed Files, List Details with Metadata”
+
 **BRIEF DESCRIPTION** 
+
 1.	Compression algorithm
 Now it is important to use right compression format and compression library. After extensive search I found “bit7z”. bit7z is a cross-platform C++ static library that allows the compression/extraction of archive files through a clean and simple wrapper interface to the dynamic libraries from the 7-zip project. It supports compression and extraction to and from the filesystem or the memory, reading archives metadata, updating existing ones, creating multi-volume archives, operation progress callbacks, and many other functionalities.
 Bit7z also supports compression and extraction in different format, updating existing file archive. Renaming, updating, or deleting old items in existing file archives. And most important testing archives for errors and receive error while reading or writing into archive to prevent inconsistent state.
