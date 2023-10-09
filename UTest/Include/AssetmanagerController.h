@@ -6,16 +6,18 @@
 namespace Controller
 {
     enum UserInputType {
-        CompressFiles = 1, UncompressFiles, AddAsset, RemoveAsset, ListAllAssetsWithMetadata, QuitApplication
+        CompressFiles = 1, UncompressFiles, AddAsset, RemoveAsset, PrintArchiveFilesWithMetadata, QuitApplication
     };
 
     class FileOperations
     {
     public:
+        FileOperations() = default;
+        ~FileOperations() = default;
         bool IsValidFilePath(std::string& filepath, std::string& errorMessage);
         bool IsValidFolderPath(std::string& folderepath, std::string& errorMessage);
         bool Is7zFile(std::string& filepath, std::string& errorMessage);
-        bool IsFolderEmpty(std::string& filepath);
+        bool IsEmptyFolder(std::string& filepath);
         bool IsSupportedExtension(const std::string& filePath, std::string& errorMessage);
         bool HasSpecialCharacters(const std::string& str);
         bool IsFileExist(std::string& filepath);
@@ -24,34 +26,53 @@ namespace Controller
     private:
     };
 
-    class AssetmanagerController
+    class IOOperation
     {
     public:
-        AssetmanagerController(View::AssetmanagerView* ui, Model::AssetmanagerModel* model)
-            : m_pUI(ui), m_pModel(model),m_pFileOper(new FileOperations()) {}
-
-        ~AssetmanagerController()
-        {
-            delete m_pFileOper;
-        }
-
-        bool StartApplication();
-        void QuitApplication();
-
-    private:
-        void PrintStartMessage();
-        void PrintFinalMessage();
+        IOOperation(View::AssetmanagerView* ui, Controller::FileOperations* fileOperation);
+        ~IOOperation() = default;
         void GetInputToCompress(std::set<std::string>& files);
         void GetInputToUncompress(std::string& zipFile, std::string& directoryPath);
         void GetValidArchivePath(std::string& zipFile);
+    private:
+        View::AssetmanagerView* m_pUI;
+        Controller::FileOperations* m_pFileOperation;
+    };
+
+    class ArchiveOperation {
+    public:
+        ArchiveOperation(View::AssetmanagerView* ui, Model::AssetmanagerModel* model, Controller::FileOperations* fileOperation,
+        Controller::IOOperation* ioOperation);
+        ~ArchiveOperation() = default;
         void Compress();
         void Uncompress();
         void AddAsset();
         void RemoveAsset();
-        void ListAllAssetsWithMetadata();
-
+        void PrintArchiveFilesWithMetadata();
+    private:
         View::AssetmanagerView* m_pUI;
         Model::AssetmanagerModel* m_pModel;
-        FileOperations* m_pFileOper;
+        Controller::FileOperations* m_pFileOperation;
+        Controller::IOOperation* m_pIoOperation;
     };
+
+    class AssetManagentController 
+    {
+    public:
+        AssetManagentController(View::AssetmanagerView* ui,Controller::ArchiveOperation* archiveOperation,
+            Controller::FileOperations* fileOperation,
+            Controller::IOOperation* ioOperation);
+
+        bool StartApplication();
+
+    private:
+        void PrintStartMessage();
+        void PrintFinalMessage();
+        void QuitApplication();
+
+        View::AssetmanagerView* m_pUI;
+        Controller::ArchiveOperation* m_ArchiveOperation;
+        Controller::FileOperations* m_FileOperation;
+        Controller::IOOperation* m_IoOperation;
+    };    
 }

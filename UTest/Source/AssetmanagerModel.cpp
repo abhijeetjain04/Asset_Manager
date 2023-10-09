@@ -12,7 +12,6 @@
 #include <bit7z/BitArchiveItemInfo.hpp>
 
 /*
-* 
 std::optional<std::string> Model::AssetmanagerModel::compressFile(const std::set<std::string>& files, const std::string& outputDirectory)
 {
 	try {
@@ -32,7 +31,6 @@ std::optional<std::string> Model::AssetmanagerModel::compressFile(const std::set
 
 */
 
-
 std::optional<std::string> Model::AssetmanagerModel::compressFile(const std::set<std::string>& files, std::string_view outputDirectory)
 {
 	try {
@@ -50,10 +48,10 @@ std::optional<std::string> Model::AssetmanagerModel::compressFile(const std::set
 	return {};
 }
 
-std::optional<std::string> Model::AssetmanagerModel::UncompressFile(const std::string_view zipFile, const std::string_view outputDirectory)
+std::optional<std::string> Model::AssetmanagerModel::UncompressFile(const std::string& zipFile, const std::string_view outputDirectory)
 {
 	try {
-	bit7z::BitArchiveReader Readarchive{ m_lib, zipFile.data(), bit7z::BitFormat::SevenZip };
+	bit7z::BitArchiveReader Readarchive{ m_lib, zipFile, bit7z::BitFormat::SevenZip };
 	// Testing the archive
 	Readarchive.test();
 	Readarchive.extractTo(outputDirectory.data());

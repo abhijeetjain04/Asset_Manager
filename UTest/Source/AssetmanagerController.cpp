@@ -1,6 +1,7 @@
 #include "AssetmanagerController.h"
 #include <bit7z/BitArchiveItemInfo.hpp>
 
+#include <stdlib.h>
 #include <set>
 #include <string>
 #include <filesystem>
@@ -10,25 +11,24 @@
 
 using namespace Controller;
 
-void AssetmanagerController::PrintStartMessage()
+Controller::AssetManagentController::AssetManagentController(View::AssetmanagerView* ui, Controller::ArchiveOperation* archiveOperation,
+    Controller::FileOperations* fileOperation,
+    Controller::IOOperation* ioOperation):m_pUI(ui), m_ArchiveOperation(archiveOperation),m_FileOperation(fileOperation),
+m_IoOperation(ioOperation)
 {
-    m_pUI->ClearScreen();
-    m_pUI->PrintOnScreen("Please select an option:");
-    m_pUI->PrintOnScreen("1. Compress files");
-    m_pUI->PrintOnScreen("2. Uncompress files");
-    m_pUI->PrintOnScreen("3. Add asset");
-    m_pUI->PrintOnScreen("4. Remove asset");
-    m_pUI->PrintOnScreen("5. List all assets with metadata");
-    m_pUI->PrintOnScreen("6. Quit");
 }
 
-void AssetmanagerController::PrintFinalMessage() 
+Controller::ArchiveOperation::ArchiveOperation(View::AssetmanagerView* ui, Model::AssetmanagerModel* model, Controller::FileOperations* fileOperation,
+    Controller::IOOperation* ioOperation):m_pUI(ui),m_pModel(model), m_pFileOperation(fileOperation), m_pIoOperation(ioOperation)
 {
-    m_pUI->PrintOnScreen("Press ENTER to continue.....");
-    m_pUI->WaitForUserInput();
 }
 
-bool AssetmanagerController::StartApplication()
+Controller::IOOperation::IOOperation(View::AssetmanagerView* ui, Controller::FileOperations* fileOperation)
+    : m_pUI(ui),m_pFileOperation(fileOperation)
+{
+}
+
+bool Controller::AssetManagentController::StartApplication()
 {
     bool quit = false;
     PrintStartMessage();
@@ -38,19 +38,19 @@ bool AssetmanagerController::StartApplication()
     switch (UserInput)
     {
     case UserInputType::CompressFiles:
-        Compress();
+        m_ArchiveOperation->Compress();
         break;
     case UserInputType::UncompressFiles:
-        Uncompress();
+        m_ArchiveOperation->Uncompress();
         break;
     case UserInputType::AddAsset:
-        AddAsset();
+        m_ArchiveOperation->AddAsset();
         break;
     case UserInputType::RemoveAsset:
-        RemoveAsset();
+        m_ArchiveOperation->RemoveAsset();
         break;
-    case UserInputType::ListAllAssetsWithMetadata:
-        ListAllAssetsWithMetadata();
+    case UserInputType::PrintArchiveFilesWithMetadata:
+        m_ArchiveOperation->PrintArchiveFilesWithMetadata();
         break;
     case UserInputType::QuitApplication:
         QuitApplication();
@@ -66,58 +66,127 @@ bool AssetmanagerController::StartApplication()
     return quit;
 }
 
-void AssetmanagerController::QuitApplication() {
+void Controller::AssetManagentController::QuitApplication()
+{
     m_pUI->PrintOnScreen("Quitting!");
+    exit(3);
 }
 
-/*
-
-bool AssetmanagerController::IsSupportedExtension(const std::string& filePath)
+void Controller::AssetManagentController::PrintStartMessage()
 {
-    static std::set<std::string> supportedExtensions = { ".tga", ".wav", ".json", ".7z" };
-    std::string fileExtension = std::filesystem::path(filePath).extension().string();
-    return supportedExtensions.count(fileExtension) > 0;
+    m_pUI->ClearScreen();
+    m_pUI->PrintOnScreen("Please select an option:");
+    m_pUI->PrintOnScreen("1. Compress files");
+    m_pUI->PrintOnScreen("2. Uncompress files");
+    m_pUI->PrintOnScreen("3. Add asset");
+    m_pUI->PrintOnScreen("4. Remove asset");
+    m_pUI->PrintOnScreen("5. List all files with metadata");
+    m_pUI->PrintOnScreen("6. Quit");
 }
 
-bool AssetmanagerController::GetValidPath(const std::string& firstMessage, std::string& filepath)
+void Controller::AssetManagentController::PrintFinalMessage()
 {
-    m_pUI->PrintOnScreen(firstMessage);
-    m_pUI->GetInputString(filepath);
+    m_pUI->PrintOnScreen("Press ENTER to continue.....");
+    m_pUI->WaitForUserInput();
+}
 
-    if (std::filesystem::is_regular_file(filepath) && IsSupportedExtension(filepath))
+void Controller::IOOperation::GetInputToCompress(std::set<std::string>& files)
+{
+    std::string inputFilePath, errorMessage;
+    do
     {
-        if (std::filesystem::exists(filepath))
+        m_pUI->PrintOnScreen("Please enter the full path of the file");
+        m_pUI->GetInputString(inputFilePath);
+
+        if (m_pFileOperation->IsValidFilePath(inputFilePath, errorMessage) && m_pFileOperation->IsSupportedExtension(inputFilePath, errorMessage))
         {
-            std::replace(filepath.begin(), filepath.end(), '\\', '/');
-            return true;
+            auto inserted = files.insert(inputFilePath);
+            if (!inserted.second)
+            {
+                m_pUI->PrintOnScreen("File already exists, please check the path and enter a new one");
+            }
         }
         else
         {
-            m_pUI->PrintOnScreen("The provided path does not exist.Please entre file path again");
+            m_pUI->PrintOnScreen(errorMessage);
+        }
+
+        m_pUI->PrintOnScreen("Do you want to add more files? Enter Y for Yes or N for No");
+        m_pUI->GetInputString(inputFilePath);
+
+        while ((inputFilePath != "Y") && (inputFilePath != "N"))
+        {
+            m_pUI->PrintOnScreen("Invalid input. Please Enter Y to add more files or N to continue");
+            m_pUI->GetInputString(inputFilePath);
+        }
+
+    } while (inputFilePath == "Y");
+}
+
+void Controller::IOOperation::GetInputToUncompress(std::string& zipFile, std::string& directoryPath)
+{
+    std::string errorMessage;
+
+   GetValidArchivePath(zipFile);
+
+    // Validate directoryPath
+    while (true)
+    {
+        m_pUI->PrintOnScreen("Please enter the path of the folder");
+        m_pUI->GetInputString(directoryPath);
+
+        bool validDirPath = m_pFileOperation->IsValidFolderPath(directoryPath, errorMessage);
+
+        if (!validDirPath)
+        {
+            m_pUI->PrintOnScreen(errorMessage);
+            continue;
+        }
+
+        if (!m_pFileOperation->IsEmptyFolder(directoryPath))
+        {
+            m_pUI->PrintOnScreen("(WARNING) The selected folder is not empty. Please enter Y to replace the files or N to enter a new path.");
+            std::string wantToProceed;
+            m_pUI->GetInputString(wantToProceed);
+
+            while (wantToProceed != "Y" && wantToProceed != "N")
+            {
+                m_pUI->PrintOnScreen("Invalid input. Please enter Y to proceed or N to enter a new path");
+                m_pUI->GetInputString(wantToProceed);
+            }
+
+            if (wantToProceed == "Y")
+                break;
+        }
+        else
+        {
+            break;
         }
     }
-    else
-    {
-        m_pUI->PrintOnScreen("Invalid file or unsupported extension. Please entre file path again");
-    }
-
-    filepath.clear();
-    return false;
 }
 
-bool AssetmanagerController::HasSpecialCharacters(const std::string& str)
+void Controller::IOOperation::GetValidArchivePath(std::string& zipFile)
 {
-    return std::any_of(str.begin(), str.end(), [](char c) {
-        return !std::isalnum(c) && c != '_';
-        });
+    std::string errorMessage;
+
+    // Validate zipFile path
+    while (true)
+    {
+        m_pUI->PrintOnScreen("Please enter the full path of the 7z folder");
+        m_pUI->GetInputString(zipFile);
+        bool validZipPath = m_pFileOperation->IsValidFilePath(zipFile, errorMessage) && m_pFileOperation->Is7zFile(zipFile, errorMessage);
+
+        if (validZipPath)
+            break;
+
+        m_pUI->PrintOnScreen(errorMessage);
+    }
 }
 
-*/
-
-void AssetmanagerController::Compress() 
+void Controller::ArchiveOperation::Compress()
 {
     std::set<std::string> inputFiles;
-    GetInputToCompress( inputFiles);
+    m_pIoOperation->GetInputToCompress(inputFiles);
     if (inputFiles.empty())
     {
         m_pUI->PrintOnScreen("No files are selected for operation.");
@@ -125,21 +194,21 @@ void AssetmanagerController::Compress()
     }
 
     std::string directoryPath;
-    m_pFileOper->GetDirectoryPath(*(inputFiles.rbegin()), directoryPath);
+    m_pFileOperation->GetDirectoryPath(*(inputFiles.rbegin()), directoryPath);
 
     std::string outputFileName;
     m_pUI->PrintOnScreen("Please enter the name of the output compressed file");
 
     do {
         m_pUI->GetInputString(outputFileName);
-        if (m_pFileOper->HasSpecialCharacters(outputFileName)) {
+        if (m_pFileOperation->HasSpecialCharacters(outputFileName)) {
             m_pUI->PrintOnScreen("Invalid input. Please enter valid file name.");
             continue;
         }
 
         outputFileName = directoryPath + "/" + outputFileName + ".7z";
 
-        if (m_pFileOper->IsFileExist(outputFileName)) {
+        if (m_pFileOperation->IsFileExist(outputFileName)) {
             m_pUI->PrintOnScreen("The file already exists at the specified path. Please enter a different name");
         }
         else {
@@ -156,11 +225,11 @@ void AssetmanagerController::Compress()
     m_pUI->PrintOnScreen("Files has been successfuly compressed. Please check the following directory path: " + directoryPath, true);
 }
 
-void AssetmanagerController::Uncompress()
+void Controller::ArchiveOperation::Uncompress()
 {
     std::string zipFile, outputDirectory;
 
-    GetInputToUncompress(zipFile, outputDirectory);
+    m_pIoOperation->GetInputToUncompress(zipFile, outputDirectory);
 
     std::optional<std::string> error = m_pModel->UncompressFile(zipFile, outputDirectory);
     if (error.has_value())
@@ -173,23 +242,23 @@ void AssetmanagerController::Uncompress()
     }
 }
 
-void Controller::AssetmanagerController::AddAsset()
+void Controller::ArchiveOperation::AddAsset()
 {
     std::set<std::string> filesToAdd;
     std::string directoryPath, zipFile;
-    GetInputToCompress(filesToAdd);
+    m_pIoOperation->GetInputToCompress(filesToAdd);
     if (filesToAdd.empty())
     {
         m_pUI->PrintOnScreen("No files are selected for operation.");
         return;
     }
 
-    GetValidArchivePath(zipFile);
-  
+    m_pIoOperation->GetValidArchivePath(zipFile);
+
     for (auto it = filesToAdd.begin(); it != filesToAdd.end();)
     {
         std::string fileName;
-        m_pFileOper->GetCompleteFilename(*it, fileName);
+        m_pFileOperation->GetCompleteFilename(*it, fileName);
         auto [error, fileAlreadyExist] = m_pModel->ArchiveContainsFile(zipFile, fileName);
         if (!error.empty())
         {
@@ -224,13 +293,13 @@ void Controller::AssetmanagerController::AddAsset()
     }
 }
 
-void Controller::AssetmanagerController::RemoveAsset()
+void Controller::ArchiveOperation::RemoveAsset()
 {
     std::string fileToDelete, zipFile;
     m_pUI->PrintOnScreen("Enter the name of file you want to delete");
     m_pUI->GetInputString(fileToDelete);
 
-    GetValidArchivePath(zipFile);
+    m_pIoOperation->GetValidArchivePath(zipFile);
 
     std::optional<std::string> error = m_pModel->RemoveFileFromArchive(zipFile, fileToDelete);
     if (error.has_value())
@@ -243,11 +312,11 @@ void Controller::AssetmanagerController::RemoveAsset()
     }
 }
 
-void Controller::AssetmanagerController::ListAllAssetsWithMetadata()
+void Controller::ArchiveOperation::PrintArchiveFilesWithMetadata()
 {
     std::string zipFile;
 
-    GetValidArchivePath(zipFile);
+    m_pIoOperation->GetValidArchivePath(zipFile);
 
     std::vector<std::unordered_map<std::string, std::string>> archiveItems;
     std::optional<std::string> error = m_pModel->ArchiveDetailsWithMetadata(zipFile, archiveItems);
@@ -256,7 +325,7 @@ void Controller::AssetmanagerController::ListAllAssetsWithMetadata()
         m_pUI->PrintOnScreen(error.value(), true);
     }
 
-    m_pUI->PrintOnScreen("Archive properties for the archive "+ std::filesystem::path(zipFile).filename().string(),true);
+    m_pUI->PrintOnScreen("Archive properties for the archive " + std::filesystem::path(zipFile).filename().string(), true);
 
     for (auto& item : archiveItems)
     {
@@ -265,100 +334,6 @@ void Controller::AssetmanagerController::ListAllAssetsWithMetadata()
             m_pUI->PrintOnScreen(key + " = " + value, true);
         }
         m_pUI->PrintOnScreen(" ", true);
-    }
-}
-
-void AssetmanagerController::GetInputToCompress( std::set<std::string>& files)
-{
-    std::string inputFilePath, errorMessage;
-    do
-    {
-        m_pUI->PrintOnScreen("Please enter the full path of the file you want to compress");
-        m_pUI->GetInputString(inputFilePath);
-
-        if (m_pFileOper->IsValidFilePath(inputFilePath, errorMessage) && m_pFileOper->IsSupportedExtension(inputFilePath, errorMessage))
-        {
-            auto inserted = files.insert(inputFilePath);
-            if (!inserted.second)
-            {
-                m_pUI->PrintOnScreen("File already exists, please check the path and enter a new one");
-            }
-        }
-        else
-        {
-            m_pUI->PrintOnScreen(errorMessage);
-        }
-
-        m_pUI->PrintOnScreen("Do you want to enter more files? Enter Y for Yes or N for No");
-        m_pUI->GetInputString(inputFilePath);
-
-        while ((inputFilePath != "Y") && (inputFilePath != "N"))
-        {
-            m_pUI->PrintOnScreen("Invalid input. Please Enter Y to add more files or N to compress the current selection");
-            m_pUI->GetInputString(inputFilePath);
-        }
-
-    } while (inputFilePath == "Y");
-}
-
-void Controller::AssetmanagerController::GetInputToUncompress(std::string& zipFile, std::string& directoryPath)
-{
-   std::string errorMessage;
-
-   GetValidArchivePath(zipFile);
-
-   // Validate directoryPath
-   while (true)
-   {
-       m_pUI->PrintOnScreen("Please enter the path of the folder where you want to uncompress");
-       m_pUI->GetInputString(directoryPath);
-
-       bool validDirPath = m_pFileOper->IsValidFolderPath(directoryPath, errorMessage);
-
-       if (!validDirPath)
-       {
-           m_pUI->PrintOnScreen(errorMessage);
-           continue;
-       }
-
-       if (!m_pFileOper->IsFolderEmpty(directoryPath))
-       {
-           m_pUI->PrintOnScreen("(WARNING) The selected folder is not empty. Please enter Y to replace the files or N to enter a new path.");
-           std::string wantToProceed;
-           m_pUI->GetInputString(wantToProceed);
-
-           while (wantToProceed != "Y" && wantToProceed != "N")
-           {
-               m_pUI->PrintOnScreen("Invalid input. Please enter Y to proceed or N to enter a new path");
-               m_pUI->GetInputString(wantToProceed);
-           }
-
-           if (wantToProceed == "Y")
-               break;
-       }
-       else
-       {
-           break;
-       }
-   }
-
-}
-
-void Controller::AssetmanagerController::GetValidArchivePath(std::string& zipFile)
-{
-    std::string errorMessage;
-
-    // Validate zipFile path
-    while (true)
-    {
-        m_pUI->PrintOnScreen("Please enter the full path of the 7z file you want to uncompress");
-        m_pUI->GetInputString(zipFile);
-        bool validZipPath = m_pFileOper->IsValidFilePath(zipFile, errorMessage) && m_pFileOper->Is7zFile(zipFile, errorMessage);
-
-        if (validZipPath)
-            break;
-
-        m_pUI->PrintOnScreen(errorMessage);
     }
 }
 
@@ -371,7 +346,7 @@ bool FileOperations::IsValidFilePath(std::string& filepath, std::string& errorMe
         return true;
     }
 
-    errorMessage = "The file does not exist. Please enter the file path again.";
+    errorMessage = "Invalid input. Please enter the correct path again.";
     filepath.clear();
     return false;
 }
@@ -389,7 +364,7 @@ bool Controller::FileOperations::Is7zFile(std::string& filepath, std::string& er
     }
 }
 
-bool Controller::FileOperations::IsFolderEmpty(std::string& filepath)
+bool Controller::FileOperations::IsEmptyFolder(std::string& filepath)
 {
     return (std::filesystem::is_empty(filepath));
 }
@@ -441,5 +416,4 @@ void Controller::FileOperations::GetDirectoryPath(const std::string& filepath, s
 {
     directoryPath = std::filesystem::path(filepath).parent_path().string();
 }
-
 
